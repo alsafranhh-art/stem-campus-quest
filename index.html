@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>STEM Campus Quest</title>
+<style>
+:root {
+  --bg: #eef1f4; --panel: #ffffff; --ink: #1d2733; --muted: #5d6b7a; --line: #d5dce3;
+  --good: #1f9d55; --good-bg: #e3f6ea; --bad: #d64545; --bad-bg: #fde8e8; --gold: #e0a800;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11161c; --panel: #1b222b; --ink: #e8edf2; --muted: #9aa8b6; --line: #2d3742;
+    --good-bg: #173a26; --bad-bg: #432020; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11161c; --panel: #1b222b; --ink: #e8edf2; --muted: #9aa8b6; --line: #2d3742;
+  --good-bg: #173a26; --bad-bg: #432020; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { height: 100%; }
+body { margin: 0; height: 100%; overflow: hidden; display: flex; flex-direction: column; justify-content: center; background: #2b3036; color: var(--ink); font: 16px/1.45 system-ui, "Segoe UI", sans-serif; }
+/* blurred copy of the campus photo fills the whole screen behind the logo and map */
+body::before { content: ""; position: fixed; inset: -20px; background: url(campus.jpg) center / cover; filter: blur(16px) brightness(.75); }
+button { font: inherit; color: inherit; cursor: pointer; }
+.top { flex: none; position: relative; display: flex; align-items: center; justify-content: center; padding: 10px 16px 6px; z-index: 3; }
+.logo { height: clamp(52px, 10vh, 110px); width: auto; max-width: 100%; filter: drop-shadow(0 2px 6px rgba(0,0,0,.35)); }
+.btn.report, .btn.lang { position: absolute; left: max(16px, env(safe-area-inset-left, 0px)); top: 50%; transform: translateY(-50%); display: inline-flex; align-items: center; gap: 8px; padding-block: 10px; padding-inline: 14px 18px; background: #fff; color: #1d2733; border: 2px solid #fff; border-radius: 99px; box-shadow: 0 4px 14px rgba(0,0,0,.35); letter-spacing: .3px; }
+.btn.report:hover, .btn.lang:hover { background: #f1f3f5; border-color: #fff; }
+.btn.lang { left: auto; right: max(16px, env(safe-area-inset-right, 0px)); padding-inline: 16px; font-weight: 700; }
+.btn.report .ic { width: 22px; height: 22px; color: #1d2733; }
+@media (max-width: 760px) { .top { flex-wrap: wrap; justify-content: space-between; gap: 6px; } .logo { order: 3; flex: 0 0 100%; } .btn.report, .btn.lang { position: static; transform: none; } }
+.ic { width: 1.1em; height: 1.1em; vertical-align: -0.18em; flex: none; }
+.pin .dot .ic { width: 58%; height: 58%; }
+.card-head h2 .ic { color: var(--c); }
+.btn { border: 1px solid var(--line); background: var(--panel); border-radius: 10px; padding: 10px 16px; font-weight: 600; }
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
+/* ---------- map ---------- */
+/* the map keeps the photo's aspect ratio (so pins stay on buildings) and is scaled to fit the space under the logo */
+/* basis = map height at full width, shrinks on wide screens; logo + map sit centred together */
+.stage { flex: 0 1 calc(100vw * 286 / 500); min-height: 0; position: relative; overflow: hidden; container-type: size; }
+/* on wide screens zoom 15% past a height fit, trimming only empty photo edges above/below the pins */
+.map { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(100cqw, 100cqh * 500 / 286 * 1.15); aspect-ratio: 500 / 286; overflow: hidden; background: url(campus.jpg) center / cover; box-shadow: 0 10px 40px rgba(0,0,0,.45); }
+.map::after { content: ""; position: absolute; inset: 0; background: linear-gradient(transparent 60%, rgba(0,0,0,.15)); pointer-events: none; }
+.pin { position: absolute; transform: translate(-50%, -50%); z-index: 2; border: 0; background: none; padding: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.pin .dot { width: clamp(40px, 6.5vw, 76px); height: clamp(40px, 6.5vw, 76px); border-radius: 30%; display: grid; place-items: center; color: #fff; background: linear-gradient(150deg, color-mix(in srgb, var(--c) 65%, #fff), var(--c) 50%, color-mix(in srgb, var(--c) 70%, #000)); border: 3px solid #fff; box-shadow: 0 3px 10px rgba(0,0,0,.35); animation: pulse 2.4s infinite; }
+.pin:hover .dot, .pin:focus-visible .dot { transform: scale(1.12); }
+.pin .lbl { background: #fff; color: #1d2733; font-size: clamp(10px, 1.6vw, 18px); font-weight: 700; padding: 1px 8px; border-radius: 99px; box-shadow: 0 2px 6px rgba(0,0,0,.25); white-space: nowrap; }
+.pin .stars { display: flex; gap: 2px; }
+.pin .stars i { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,.6); border: 1px solid rgba(0,0,0,.3); }
+.pin .stars i.done { background: var(--c); border-color: #fff; }
+.pin .stars i.perfect { background: var(--gold); border-color: #fff; }
+@keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(255,255,255,.7), 0 3px 10px rgba(0,0,0,.35); } 50% { box-shadow: 0 0 0 8px rgba(255,255,255,0), 0 3px 10px rgba(0,0,0,.35); } }
+/* phones: names wrap to two lines so neighbouring labels don't collide */
+@media (max-width: 640px) { .pin .stars { display: none; } .pin .lbl { font-size: 9px; padding: 1px 5px; white-space: normal; width: min-content; text-align: center; line-height: 1.15; border-radius: 6px; } }
+
+
+/* ---------- overlay ---------- */
+/* challenge screens cover the whole screen; content sits in a centred column up to 880px wide */
+.overlay { position: fixed; inset: 0; display: none; z-index: 10; }
+.overlay.open { display: flex; }
+.card { background: var(--panel); width: 100%; height: 100%; overflow: auto; border-top: 8px solid var(--c, var(--ink)); padding: 22px max(16px, calc((100% - 880px) / 2)) 32px; }
+.card-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px; }
+.card-head h2 { margin: 0; font-size: 22px; }
+.close { border: 0; background: none; font-size: 26px; line-height: 1; color: var(--muted); }
+.sub { color: var(--muted); margin: 0 0 16px; }
+
+
+.bar { height: 8px; background: var(--line); border-radius: 99px; overflow: hidden; margin: 6px 0 16px; }
+.bar > div { height: 100%; background: var(--c); transition: width .3s; }
+.qtopic { font-size: 13px; font-weight: 700; color: var(--c); text-transform: uppercase; letter-spacing: .5px; }
+.qtext { font-size: 20px; font-weight: 600; margin: 4px 0 16px; }
+.feedback { margin-top: 14px; padding: 14px 16px; border-radius: 12px; }
+.feedback.good { background: var(--good-bg); }
+.feedback.bad { background: var(--bad-bg); border-inline-start: 5px solid var(--bad); }
+.row { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+
+.score { display: flex; align-items: center; gap: 18px; margin-bottom: 14px; }
+.ring { --p: 0; width: 110px; height: 110px; flex: none; border-radius: 50%; display: grid; place-items: center; background: conic-gradient(var(--c) calc(var(--p) * 1%), var(--line) 0); }
+.ring div { width: 84px; height: 84px; border-radius: 50%; background: var(--panel); display: grid; place-items: center; font-size: 24px; font-weight: 800; }
+.rating { font-size: 22px; font-weight: 800; }
+h3 { margin: 18px 0 8px; font-size: 16px; }
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag { padding: 4px 10px; border-radius: 99px; font-size: 13px; font-weight: 600; }
+.tag.ok { background: var(--good-bg); color: var(--good); }
+.tag.miss { background: var(--bad-bg); color: var(--bad); }
+.review { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin-bottom: 8px; }
+.review p { margin: 4px 0; }
+.review .yours { color: var(--bad); }
+.review .ans { color: var(--good); }
+.tip { background: var(--bg); padding: 12px 14px; border-radius: 12px; }
+/* CIS club booth plug at the end of a Space Science run; black panel matches the logo's own background */
+.cis { margin-top: 18px; background: #000; border-radius: 16px; padding: 18px; text-align: center; color: #fff; }
+.cis img { width: min(100%, 460px); display: block; margin: 0 auto; }
+.cis p { margin: 10px 0 0; font-size: 1.15rem; }
+.cis b { color: #f9c51b; }
+
+table { width: 100%; border-collapse: collapse; font-size: 15px; }
+th, td { text-align: start; padding: 8px 6px; border-bottom: 1px solid var(--line); }
+td.n { font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+<header class="top">
+  <!-- STEM club logo in the original's coordinates, each part tinted with a campus major colour -->
+  <svg class="logo" viewBox="68 230 520 145" role="img" aria-label="STEM club">
+    <!-- S + atom -->
+    <path d="M158 268C153 256 141 251 127 251C110 251 98 261 98 276C98 292 112 297 127 303C143 309 157 315 157 331C157 347 144 355 127 355C112 355 101 349 96 336" fill="none" stroke="#8e44ad" stroke-width="26"/>
+    <g fill="none" stroke="#2c3e9e" stroke-width="3.5" transform="translate(125 329)">
+      <ellipse rx="52" ry="17"/><ellipse rx="52" ry="17" transform="rotate(60)"/><ellipse rx="52" ry="17" transform="rotate(-60)"/>
+      <circle r="9" stroke-width="3"/><circle r="4" fill="#2c3e9e" stroke="none"/>
+    </g>
+    <!-- T: sprout with a leaf and a solar panel -->
+    <path d="M234 368C231 330 231 298 235 276C237 266 241 259 248 253" fill="none" stroke="#27ae60" stroke-width="11" stroke-linecap="round"/>
+    <path d="M164 241C191 240 224 253 242 270C222 273 192 263 164 241Z" fill="#27ae60"/>
+    <g transform="rotate(-12 274 256)">
+      <rect x="251" y="241" width="46" height="30" rx="1.5" fill="#e84393" stroke="#b9bdc3" stroke-width="2.5"/>
+      <path d="M266.3 241v30M281.7 241v30M251 256h46" stroke="#fff" stroke-width="2"/>
+    </g>
+    <!-- E with a gear behind it -->
+    <g fill="#a0522d" transform="translate(350 305)">
+      <circle r="22"/>
+      <g id="tooth"><rect x="-5.5" y="-30" width="11" height="11" rx="1.5"/></g>
+      <use href="#tooth" transform="rotate(45)"/><use href="#tooth" transform="rotate(90)"/><use href="#tooth" transform="rotate(135)"/>
+      <use href="#tooth" transform="rotate(180)"/><use href="#tooth" transform="rotate(225)"/><use href="#tooth" transform="rotate(270)"/><use href="#tooth" transform="rotate(315)"/>
+    </g>
+    <g fill="#e67e22">
+      <rect x="305" y="238" width="24" height="130"/>
+      <rect x="305" y="238" width="80" height="25"/>
+      <rect x="305" y="293" width="76" height="25"/>
+      <rect x="305" y="343" width="82" height="25"/>
+    </g>
+    <!-- M: left leg, diagonal, tapered right stroke -->
+    <polygon fill="#2980b9" points="438,368 438,238 470,238 511,328 547,253 552,258 524,368 498,368 465,302 465,368"/>
+    <!-- maths symbols -->
+    <g fill="none" stroke="#c0392b" stroke-width="4.5" stroke-linecap="square">
+      <path d="M550 248h16"/>
+      <path d="M551 283h18M560 274v18"/>
+      <path d="M551 312h18M551 321h18"/>
+      <circle cx="553" cy="335" r="4.5" stroke-width="3.5"/><circle cx="568" cy="356" r="4.5" stroke-width="3.5"/><path d="M570 331 551 360" stroke-width="3.5"/>
+    </g>
+  </svg>
+  <button class="btn report" id="reportBtn"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M4 20h16M7 16v-5M12 16V6M17 16v-8"/></svg><span id="reportTxt">Day report</span></button>
+  <button class="btn lang" id="langBtn"></button>
+</header>
+
+<main class="stage">
+  <div class="map" id="map"></div>
+</main>
+
+<div class="overlay" id="overlay"><div class="card" id="card"></div></div>
+
+<script src="i18n.js"></script>
+<script src="questions.js"></script>
+<script src="questions.ar.js"></script>
+<script src="widgets.js"></script>
+<script>
+// x/y are % positions of each building on campus.jpg (same framing as the original 500x286 photo)
+const LOCS = [
+  { id: 'chemistry',   name: 'Chemistry', ar: 'الكيمياء',     major: 'Science',     color: '#8e44ad', x: 15, y: 21 },
+  { id: 'biology',     name: 'Biology', ar: 'الأحياء',       major: 'Science',     color: '#27ae60', x: 29, y: 19 },
+  { id: 'geology',     name: 'Geology', ar: 'الجيولوجيا',       major: 'Science',     color: '#a0522d', x: 46, y: 20 },
+  { id: 'space',       name: 'Space Science', ar: 'علوم الفضاء', major: 'Space',       color: '#2c3e9e', x: 81, y: 19 },
+  { id: 'math',        name: 'Mathematics', ar: 'الرياضيات',   major: 'Mathematics', color: '#2980b9', x: 10, y: 76 },
+  { id: 'art',         name: 'Art & Design', ar: 'الفن والتصميم',  major: 'Art',         color: '#e84393', x: 25, y: 82 },
+  { id: 'engineering', name: 'Engineering', ar: 'الهندسة',   major: 'Engineering', color: '#e67e22', x: 52, y: 82 },
+  { id: 'medicine',    name: 'Medicine', ar: 'الطب',      major: 'Medicine',    color: '#c0392b', x: 84, y: 72 },
+];
+// line icons drawn on a 24x24 grid, coloured by currentColor
+const svgIcon = d => `<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const ICONS = {
+  chemistry:   '<path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.7 3h10.6a2 2 0 0 0 1.7-3l-5-9V3"/><path d="M7.5 15h9"/>',
+  biology:     '<path d="M8 3c0 4 8 5 8 9s-8 5-8 9M16 3c0 4-8 5-8 9s8 5 8 9M9 6.5h6M9 17.5h6"/>',
+  geology:     '<path d="M3 20 9.5 8l3.5 6 3-4 5 10z"/><path d="M6.5 16h11"/>',
+  space:       '<path d="M12 2c3 2.5 5 6 5 10l-2 4H9l-2-4c0-4 2-7.5 5-10z"/><circle cx="12" cy="10" r="2"/><path d="M9 16l-2.5 4 3.5-1M15 16l2.5 4-3.5-1"/>',
+  math:        '<path d="M4 7h16M9 7v12M15 7v9.5c0 1.5.8 2.5 2.5 2.5"/>',
+  art:         '<path d="M12 3a9 9 0 1 0 0 18c1.4 0 2-.9 2-1.9 0-1.2-1-1.6-1-2.6 0-1 .9-1.5 2-1.5h2.2A3.8 3.8 0 0 0 21 11c0-4.5-4-8-9-8z"/><circle cx="7.5" cy="11.5" r="1"/><circle cx="10.5" cy="7.5" r="1"/><circle cx="15" cy="7.5" r="1"/>',
+  engineering: '<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/><circle cx="12" cy="12" r="6.5"/>',
+  medicine:    '<path d="M12 20s-8-4.6-8-10.2A4.3 4.3 0 0 1 12 7.5a4.3 4.3 0 0 1 8 2.3C20 15.4 12 20 12 20z"/><path d="M6.5 12.5h3l1.5-3 2 5 1.5-2h3"/>',
+};
+for (const L of LOCS) L.icon = svgIcon(ICONS[L.id]);
+const REPORT_ICON = svgIcon('<path d="M4 20h16M7 16v-5M12 16V6M17 16v-8"/>');
+const KEY = 'stemCampus.v2';
+const $ = s => document.querySelector(s);
+
+function load() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch { return {}; } }
+function save(p) { try { localStorage.setItem(KEY, JSON.stringify(p)); } catch {} }
+let progress = load();
+
+// ---------- map ----------
+function drawMap() {
+  const map = $('#map');
+  map.querySelectorAll('.pin').forEach(p => p.remove());
+  for (const L of LOCS) {
+    const r = progress[L.id], n = BANK[L.id].length;
+    const stars = Array.from({ length: n }, (_, k) => `<i class="${!r || k >= r.best ? '' : r.best === n ? 'perfect' : 'done'}"></i>`).join('');
+    const pin = document.createElement('button');
+    pin.className = 'pin';
+    pin.style.cssText = `left:${L.x}%;top:${L.y}%;--c:${L.color}`;
+    pin.setAttribute('aria-label', L.name);
+    pin.innerHTML = `<span class="dot">${L.icon}</span><span class="lbl">${L.name}</span><span class="stars">${stars}</span>`;
+    pin.onclick = () => startQuiz(L.id);
+    map.appendChild(pin);
+  }
+}
+
+// ---------- overlay ----------
+const overlay = $('#overlay'), card = $('#card');
+function show(html, color) {
+  card.style.setProperty('--c', color || 'var(--ink)');
+  card.innerHTML = html;
+  overlay.classList.add('open');
+  card.scrollTop = 0;
+}
+function closeOverlay() { overlay.classList.remove('open'); game = null; drawMap(); }
+overlay.onclick = e => { if (e.target === overlay) closeOverlay(); };
+const head = (title) => `<div class="card-head"><h2>${title}</h2><button class="close" aria-label="${tr('Close', 'سكّر')}" onclick="closeOverlay()">×</button></div>`;
+
+// ---------- challenges ----------
+// the Arabic bank only holds text; numbers, answers and drawings always come from BANK
+const bank = id => LANG === 'ar' ? BANK[id].map((q, i) => ({ ...q, ...BANK_AR[id][i] })) : BANK[id];
+let game = null;
+function startQuiz(locId) {
+  game = { L: LOCS.find(l => l.id === locId), qs: bank(locId), i: 0, log: [], locked: false };
+  renderQ();
+}
+
+function renderQ() {
+  const { L, qs, i } = game, q = qs[i];
+  game.locked = false;
+  show(`${head(`${L.icon} ${L.name}`)}
+    <div class="sub">${tr(`Challenge ${i + 1} of ${qs.length}`, `التحدي ${i + 1} من ${qs.length}`)}</div>
+    <div class="bar"><div style="width:${i / qs.length * 100}%"></div></div>
+    <div class="qtopic">${esc(q.t)}</div>
+    <div class="qtext">${esc(q.q)}</div>
+    <div id="widget"></div>
+    <div id="fb"><div class="row"><button class="btn primary" id="checkBtn">${tr('Check', 'شيّك')}</button></div></div>`, L.color);
+  game.w = WIDGETS[q.type](q, $('#widget'));
+  $('#checkBtn').onclick = check;
+}
+
+function check() {
+  if (!game || game.locked) return;
+  game.locked = true;
+  const q = game.qs[game.i], r = game.w.check();
+  game.log.push({ q, ...r });
+  $('#widget').classList.add('w-done');
+  if (!r.ok) game.w.reveal();
+  const last = game.i === game.qs.length - 1;
+  const next = `<div class="row"><button class="btn primary" id="nextBtn">${last ? tr('See my analysis →', 'شوف تحليلي ←') : tr('Next challenge →', 'بعد ←')}</button></div>`;
+  $('#fb').innerHTML = r.ok
+    ? tr(`<div class="feedback good">✓ <b>Correct!</b> ${esc(q.why)}</div>${next}`, `<div class="feedback good">✓ <b>صح عليك!</b> ${esc(q.why)}</div>${next}`)
+    : tr(`<div class="feedback bad">✗ <b>Not quite.</b> You had: ${esc(r.yours)}.<br>The answer is <b>${esc(r.correct)}</b>.<br><b>Why:</b> ${esc(q.why)}</div>${next}`, `<div class="feedback bad">✗ <b>مب صح هالمرة.</b> إجابتك: ${esc(r.yours)}.<br>الجواب الصحيح: <b>${esc(r.correct)}</b>.<br><b>ليش:</b> ${esc(q.why)}</div>${next}`);
+  $('#nextBtn').onclick = advance;
+  $('#nextBtn').focus();
+}
+
+function advance() {
+  if (!game) return;
+  if (++game.i < game.qs.length) renderQ(); else finish();
+}
+
+// ---------- analysis ----------
+function finish() {
+  const { L, log } = game;
+  const right = log.filter(x => x.ok).length, total = log.length, pct = Math.round(right / total * 100);
+
+  // save best + lifetime totals
+  const rec = (progress[L.id] ||= { best: 0, total, right: 0, asked: 0, plays: 0 });
+  rec.best = Math.max(rec.best, right); rec.total = total;
+  rec.right += right; rec.asked += total; rec.plays++;
+  save(progress);
+
+  const rating = pct === 100 ? ['🏆', tr('Expert!', 'خبير!')] : pct >= 75 ? ['🌟', tr('Solid work', 'شغل حلو')] : pct >= 50 ? ['📈', tr('Getting there', 'قاعد تقرب')] : ['🔭', tr('Keep exploring', 'كمّل استكشاف')];
+
+  // per-topic breakdown
+  const topics = {};
+  for (const x of log) { const t = topics[x.q.t] ||= { r: 0, n: 0 }; t.n++; if (x.ok) t.r++; }
+  const tags = Object.entries(topics).map(([t, v]) => `<span class="tag ${v.r === v.n ? 'ok' : 'miss'}">${v.r === v.n ? '✓' : '✗'} ${esc(t)}</span>`).join('');
+  const weak = Object.entries(topics).filter(([, v]) => v.r < v.n).map(([t]) => t);
+  const strong = Object.entries(topics).filter(([, v]) => v.r === v.n).map(([t]) => t);
+
+  const missed = log.filter(x => !x.ok).map(x => `<div class="review">
+      <p><b>${esc(x.q.q)}</b></p>
+      <p class="yours">✗ ${tr('You had', 'إجابتك')}: ${esc(x.yours)}</p>
+      <p class="ans">✓ ${tr('Correct', 'الصحيح')}: ${esc(x.correct)}</p>
+      <p><b>${tr('Why', 'ليش')}:</b> ${esc(x.q.why)}</p></div>`).join('');
+
+  const tip = pct === 100 ? tr(`A perfect run at ${L.name}. Try another building on campus!`, `نتيجة كاملة في ${L.name}! جرّب مبنى ثاني بالحرم!`)
+    : pct >= 50 ? tr(`Good start. Read the explanations for <b>${esc(weak.join(', '))}</b> below, then retry to lock it in.`, `بداية زينة. اقرا الشرح لـ <b>${esc(weak.join('، '))}</b> تحت، وبعدين عيد المحاولة عشان تثبّت المعلومة.`)
+    : tr(`Read the explanations for <b>${esc(weak.join(', '))}</b> below, then try again. Each retry mixes up the pieces.`, `اقرا الشرح لـ <b>${esc(weak.join('، '))}</b> تحت وجرّب مرة ثانية. كل مرة نغيّر ترتيب القطع.`);
+
+  show(`${head(`${L.icon} ${L.name} · ${tr('Analysis', 'التحليل')}`)}
+    <div class="score">
+      <div class="ring" style="--p:${pct}"><div>${pct}%</div></div>
+      <div><div class="rating">${rating[0]} ${rating[1]}</div>
+        <div class="sub" style="margin:4px 0 0">${tr(`${right} of ${total} challenges right · Best here: ${rec.best}/${total} · Played ${rec.plays}×`, `${right} من ${total} تحديات صح · أحسن نتيجة هنا: ${rec.best}/${total} · لعبتها ${rec.plays} مرات`)}</div></div>
+    </div>
+    <h3>${tr('Topic breakdown', 'نتيجتك بكل موضوع')}</h3><div class="tags">${tags}</div>
+    ${strong.length ? `<p class="sub" style="margin-top:8px">${tr('Strong in', 'قوي بـ')}: ${esc(strong.join(tr(', ', '، ')))}</p>` : ''}
+    <h3>${tr('What to do next', 'شنو تسوي بعدين')}</h3><div class="tip">${tip}</div>
+    ${missed ? `<h3>${tr(`Review your missed challenges (${total - right})`, `راجع التحديات اللي غلطت فيها (${total - right})`)}</h3>${missed}` : `<h3>${tr('No missed challenges. Flawless!', 'ما غلطت بشي. ممتاز!')}</h3>`}
+    ${L.id === 'space' ? `<div class="cis"><img src="cis-club.png" alt="${tr('CIS Club: Space Sciences &amp; Astronomy', 'نادي CIS: علوم الفضاء والفلك')}"><p>${tr('Want more? Come visit the <b>CIS Club</b> booth!', 'تبي المزيد؟ تعال زور ركن <b>نادي CIS</b>!')}</p></div>` : ''}
+    <div class="row">
+      <button class="btn" onclick="closeOverlay()">${tr('Back to campus', 'ارجع للحرم')}</button>
+      <button class="btn primary" onclick="startQuiz('${L.id}')">${tr('Retry', 'عيد المحاولة')}</button>
+    </div>`, L.color);
+}
+
+// ---------- day report ----------
+function openReport() {
+  const rows = LOCS.map(L => { const r = progress[L.id]; return { L, r, acc: r ? r.right / r.asked : null }; });
+  const played = rows.filter(x => x.r).sort((a, b) => b.acc - a.acc);
+  const totR = played.reduce((s, x) => s + x.r.right, 0), totA = played.reduce((s, x) => s + x.r.asked, 0);
+  const body = rows.map(({ L, r, acc }) => `<tr><td>${L.icon} ${L.name}</td><td class="n">${r ? `${r.best}/${r.total}` : '—'}</td><td class="n">${r ? Math.round(acc * 100) + '%' : '—'}</td><td class="n">${r ? r.plays : 0}</td></tr>`).join('');
+  const summary = played.length
+    ? `<div class="tip">${tr(`Overall accuracy <b>${Math.round(totR / totA * 100)}%</b> across ${totA} challenges in ${played.length} of ${LOCS.length} buildings.`, `الدقة الكلية <b>${Math.round(totR / totA * 100)}%</b> بـ ${totA} تحدي في ${played.length} من ${LOCS.length} مباني.`)}<br>
+       ${tr('Strongest', 'الأقوى')}: <b>${played[0].L.name}</b> (${Math.round(played[0].acc * 100)}%)${played.length > 1 ? ` · ${tr('Needs work', 'يحتاج شغل')}: <b>${played.at(-1).L.name}</b> (${Math.round(played.at(-1).acc * 100)}%)` : ''}</div>`
+    : `<div class="tip">${tr('No challenges played yet. Tap a building to start!', 'ما لعبت أي تحدي للحين. دوس على مبنى وابدأ!')}</div>`;
+  show(`${head(`${REPORT_ICON} ${tr('Day report', 'تقرير اليوم')}`)}${summary}
+    <h3>${tr('Results by building', 'النتائج حسب المبنى')}</h3>
+    <table><tr><th>${tr('Building', 'المبنى')}</th><th>${tr('Best', 'الأفضل')}</th><th>${tr('Accuracy', 'الدقة')}</th><th>${tr('Plays', 'المرات')}</th></tr>${body}</table>
+    <div class="row"><button class="btn" onclick="if(this.dataset.sure){progress={};save(progress);openReport()}else{this.dataset.sure=1;this.textContent='${tr('Tap again to reset', 'دوس مرة ثانية للتأكيد')}'}">${tr('Reset progress', 'صفّر التقدم')}</button><button class="btn primary" onclick="closeOverlay()">${tr('Back to campus', 'ارجع للحرم')}</button></div>`);
+}
+$('#reportBtn').onclick = openReport;
+
+document.addEventListener('keydown', e => {
+  if (overlay.classList.contains('open') && e.key === 'Escape') closeOverlay();
+});
+
+// ---------- language switch ----------
+function applyLang() {
+  const ar = LANG === 'ar', d = document.documentElement;
+  d.lang = ar ? 'ar' : 'en'; d.dir = ar ? 'rtl' : 'ltr';
+  document.title = tr('STEM Campus Quest', 'تحدّي حرم STEM');
+  $('.logo').setAttribute('aria-label', tr('STEM club', 'نادي STEM'));
+  $('#reportTxt').textContent = tr('Day report', 'تقرير اليوم');
+  $('#langBtn').textContent = ar ? 'English' : 'عربي';
+  for (const l of LOCS) { l.en ??= l.name; l.name = ar ? l.ar : l.en; }
+  drawMap();
+}
+$('#langBtn').onclick = () => {
+  LANG = LANG === 'ar' ? 'en' : 'ar';
+  try { localStorage.setItem('stemCampus.lang', LANG); } catch {}
+  applyLang();
+};
+
+// ---------- self-test: open with ?test ----------
+// Checks the bank's shape, renders every challenge off-screen, draws its review, and confirms solve() lands on a passing answer.
+if (location.search.includes('test')) {
+  const errs = [];
+  let n = 0;
+  const was = LANG;
+  for (const lang of ['en', 'ar']) { LANG = lang;
+  for (const L of LOCS) {
+    const qs = bank(L.id);
+    if (lang === 'ar' && BANK_AR[L.id]?.length !== BANK[L.id].length) errs.push(`${L.id}: Arabic bank has a different length`);
+    if (!qs || qs.length < 2) { errs.push(`${L.id}: needs at least 2 challenges`); continue; }
+    for (const q of qs) {
+      n++;
+      const name = `${L.id}/${q.t}`;
+      if (!q.q || !q.t || !q.why) errs.push(`${name}: missing q, t or why`);
+      if (!WIDGETS[q.type] || (q.type === 'sim' && !SIMS[q.sim])) { errs.push(`${name}: unknown type ${q.type}/${q.sim}`); continue; }
+      if (q.type === 'order' && new Set(q.items).size !== q.items.length) errs.push(`${name}: order items must be unique`);
+      try {
+        const w = WIDGETS[q.type](q, document.createElement('div'));
+        if (w.check().ok) errs.push(`${name}: already correct before any move`);
+        w.reveal();
+        w.solve();
+        if (!w.check().ok) errs.push(`${name}: solve() does not pass check()`);
+      } catch (e) { errs.push(`${name}: ${e.message}`); }
+    }
+  }
+  } LANG = was;
+  const msg = errs.length ? `SELF-TEST FAILED (${errs.length})` : `SELF-TEST PASSED: ${n} challenges OK`;
+  console[errs.length ? 'error' : 'log'](msg, errs);
+}
+
+applyLang();
+</script>
+</body>
+</html>
